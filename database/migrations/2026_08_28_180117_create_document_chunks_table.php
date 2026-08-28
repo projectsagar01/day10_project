@@ -9,17 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
-{
-    Schema::create('document_chunks', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('document_id')->constrained()->onDelete('cascade');
-        $table->integer('chunk_index');
-        $table->text('content');
-        $table->vector('embedding', 768);
-        $table->timestamps();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('document_chunks', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+        });
+    }
+
     /**
      * Reverse the migrations.
      */
