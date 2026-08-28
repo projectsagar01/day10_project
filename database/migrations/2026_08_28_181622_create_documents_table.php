@@ -8,18 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('document_chunks', function (Blueprint $table) {
+        Schema::create('documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('document_id')->constrained()->onDelete('cascade');
-            $table->integer('chunk_index');
+            $table->string('title');
             $table->text('content');
-            $table->vector('embedding', 1024); // msbai-embed-large = 1024 dims
+            $table->string('status')->default('pending');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('document_chunks');
+        Schema::dropIfExists('documents');
     }
 };
