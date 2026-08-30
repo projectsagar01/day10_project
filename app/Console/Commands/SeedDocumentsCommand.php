@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Http;
 class SeedDocumentsCommand extends Command
 {
     protected $signature = 'documents:seed';
-    protected $description = 'Seed documents with embeddings using msbai-embed-large';
+    protected $description = 'Seed documents with embeddings using mxbai-embed-large';
 
     public function handle(): void
     {
@@ -26,12 +26,13 @@ class SeedDocumentsCommand extends Command
         foreach ($faqs as $faq) {
             $this->info('🔮 Embedding: ' . $faq['title']);
 
-            $response = Http::post($ollamaUrl . '/api/embeddings', [
-                'model' => 'msbai-embed-large:latest',
-                'prompt' => $faq['content'],
+            // 🔥 CORRECT ENDPOINT + PARAMETER
+            $response = Http::post($ollamaUrl . '/api/embed', [
+                'model' => 'mxbai-embed-large:latest',
+                'input' => $faq['content'],
             ]);
 
-            $embedding = $response->json()['embedding'] ?? [];
+            $embedding = $response->json()['embeddings'][0] ?? [];
 
             if (empty($embedding)) {
                 $this->error('❌ Failed to generate embedding for: ' . $faq['title']);
