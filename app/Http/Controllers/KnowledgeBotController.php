@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DocumentChunk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class KnowledgeBotController extends Controller
 {
@@ -16,9 +17,10 @@ class KnowledgeBotController extends Controller
             return response()->json(['error' => 'Missing query parameter.'], 400);
         }
 
-        // 🔥 Step 1: Generate query embedding manually (via Ollama)
         $ollamaUrl = env('OLLAMA_URL', 'http://host.docker.internal:11434');
-        $embeddingResponse = Http::post($ollamaUrl . '/api/embed', [
+
+        // 🔥 Step 1: Generate Query Embedding
+        $embeddingResponse = Http::timeout(30)->post($ollamaUrl . '/api/embed', [
             'model' => 'mxbai-embed-large:latest',
             'input' => $query,
         ]);
@@ -29,7 +31,7 @@ class KnowledgeBotController extends Controller
             return response()->json(['error' => 'Failed to generate query embedding.'], 500);
         }
 
-        // 🔥 Step 2: Search with the embedding
+        // 🔥 Step 2: Search
         $chunks = DocumentChunk::query()
             ->whereNotNull('embedding')
             ->whereVectorSimilarTo('embedding', $queryEmbedding, minSimilarity: 0.5)
@@ -53,19 +55,30 @@ class KnowledgeBotController extends Controller
         $prompt .= "Question: {$query}\n\n";
         $prompt .= "If the answer is not in the context, say \"I don't know.\"";
 
-        // 🔥 Step 5: Generate Answer via Ollama
-        $response = Http::post($ollamaUrl . '/api/generate', [
-            'model' => 'llama3.1',
-            'prompt' => $prompt,
-            'stream' => false,
-        ]);
+        // 🔥 Step 5: Generate Answer (Increased Timeout)
+        try {
+            $response = Http::timeout(120)->post($ollamaUrl . '/api/generate', [
+                'model' => 'llama3.1',   // Or use 'phi3:mini' for speed
+                'prompt' => $prompt,
+                'stream' => false,
+            ]);
 
-        $answer = $response->json()['response'] ?? 'No response from AI.';
+            $answer = $response->json()['response'] ?? 'No response from AI.';
 
-        return response()->json([
-            'answer' => $answer,
-            'citations' => $citationIds,
-            'chunks' => $chunks->pluck('content'),
-        ]);
+            Log::info('Answer generated successfully.', ['query' => $query]);
+
+            return response()->json([
+                'answer' => $answer,
+                'citations' => $citationIds,
+                'chunks' => $chunks->pluck('content'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error generating answer: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to generate answer: ' . $e->getMessage(),
+                'citations' => $citationIds,
+            ], 500);
+        }
     }
 }

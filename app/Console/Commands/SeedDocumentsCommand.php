@@ -24,6 +24,11 @@ class SeedDocumentsCommand extends Command
         $ollamaUrl = env('OLLAMA_URL', 'http://host.docker.internal:11434');
 
         foreach ($faqs as $faq) {
+            $existing = Document::where('title', $faq['title'])->first();
+    if ($existing) {
+        $this->info('⏭️ Skipping: ' . $faq['title'] . ' (already exists)');
+        continue;
+    }
             $this->info('🔮 Embedding: ' . $faq['title']);
 
             // 🔥 CORRECT ENDPOINT + PARAMETER
